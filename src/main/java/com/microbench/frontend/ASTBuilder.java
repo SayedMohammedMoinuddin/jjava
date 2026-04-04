@@ -23,6 +23,7 @@ public class ASTBuilder extends MicroBaseVisitor<ASTNode> {
         if (ctx.assignStmt() != null) return visit(ctx.assignStmt());
         if (ctx.printStmt() != null) return visit(ctx.printStmt());
         if (ctx.forLoop() != null) return visit(ctx.forLoop());
+        if (ctx.whileLoop() != null) return visit(ctx.whileLoop());
         throw new RuntimeException("Unknown statement type");
     }
 
@@ -57,6 +58,15 @@ public class ASTBuilder extends MicroBaseVisitor<ASTNode> {
                 .map(stmt -> (Statement) visit(stmt))
                 .collect(Collectors.toList());
         return new ForLoop(init, condition, updateVar, updateExpr, body);
+    }
+
+    @Override
+    public ASTNode visitWhileLoop(MicroParser.WhileLoopContext ctx) {
+        Expression condition = (Expression) visit(ctx.expr());
+        List<Statement> body = ctx.statement().stream()
+                .map(stmt -> (Statement) visit(stmt))
+                .collect(Collectors.toList());
+        return new WhileLoop(condition, body);
     }
 
     @Override

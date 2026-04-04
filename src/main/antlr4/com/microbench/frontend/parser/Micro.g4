@@ -7,6 +7,7 @@ statement : varDecl ';'
           | assignStmt ';'
           | printStmt ';'
           | forLoop
+          | whileLoop
           ;
 
 varDecl : type ID '=' expr ;
@@ -16,6 +17,8 @@ assignStmt : ID '=' expr ;
 printStmt : 'print' '(' expr ')' ;
 
 forLoop : 'for' '(' varDecl ';' expr ';' ID '=' expr ')' '{' statement* '}' ;
+
+whileLoop : 'while' '(' expr ')' '{' statement* '}' ;
 
 type : 'int' | 'double' ;
 

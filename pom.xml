@@ -36,6 +36,13 @@
             <version>${javafx.version}</version>
         </dependency>
 
+        <!-- SQLite Database -->
+        <dependency>
+            <groupId>org.xerial</groupId>
+            <artifactId>sqlite-jdbc</artifactId>
+            <version>3.45.1.0</version>
+        </dependency>
+
         <!-- Testing -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -103,6 +110,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.1.0</version>
                 <configuration>
+                    <!-- Default to CLI. Pass -Dexec.mainClass="com.microbench.ui.GuiMain" to run GUI -->
                     <mainClass>com.microbench.Main</mainClass>
                 </configuration>
             </plugin>
