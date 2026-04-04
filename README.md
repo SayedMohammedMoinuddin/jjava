@@ -18,12 +18,12 @@ This is a Java desktop application that parses a small, custom math-heavy langua
 
 2. **Run the CLI**
    ```bash
-   mvn exec:java -Dexec.mainClass="com.microbench.Main" -Dexec.args="examples/test.micro"
+   mvn exec:java -Dexec.mainClass=com.microbench.Main -Dexec.args="examples/test.micro"
    ```
 
 3. **Run the GUI**
    ```bash
-   mvn exec:java -Dexec.mainClass="com.microbench.ui.GuiMain"
+   mvn exec:java -Dexec.mainClass=com.microbench.ui.GuiMain
    ```
 
 ## Features
