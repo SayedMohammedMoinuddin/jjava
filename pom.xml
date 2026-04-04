@@ -14,6 +14,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <antlr.version>4.13.1</antlr.version>
         <javafx.version>17.0.6</javafx.version>
+        <exec.mainClass>com.microbench.Main</exec.mainClass>
     </properties>
 
     <dependencies>
@@ -111,7 +112,7 @@
                 <version>3.1.0</version>
                 <configuration>
                     <!-- Default to CLI. Pass -Dexec.mainClass="com.microbench.ui.GuiMain" to run GUI -->
-                    <mainClass>com.microbench.Main</mainClass>
+                    <mainClass>${exec.mainClass}</mainClass>
                 </configuration>
             </plugin>
 
