@@ -6,6 +6,7 @@ import com.microbench.backend.CGenerator;
 import com.microbench.backend.JavaGenerator;
 import com.microbench.engine.ExecutionEngine;
 import com.microbench.engine.ExecutionResult;
+import com.microbench.engine.BenchmarkResult;
 import com.microbench.frontend.ASTBuilder;
 import com.microbench.frontend.parser.MicroLexer;
 import com.microbench.frontend.parser.MicroParser;
@@ -63,13 +64,19 @@ public class Main {
             // 3. Execution and Telemetry
             ExecutionEngine engine = new ExecutionEngine();
 
-            System.out.println("--- Running Java Backend ---");
-            ExecutionResult javaResult = engine.runJava(javaCode);
-            printResult("Java", javaResult);
+            boolean enableWarmup = true;
+            int warmupIterations = 1000;
+            String optimizationLevel = "-O3";
 
-            System.out.println("\n--- Running Native Backend ---");
-            ExecutionResult cResult = engine.runC(cCode);
-            printResult("Native (C)", cResult);
+            System.out.println("--- Running Benchmarks (Warmup: " + enableWarmup + ", Iters: " + warmupIterations + ", Opt: " + optimizationLevel + ") ---");
+
+            BenchmarkResult benchmarkResult = engine.runBenchmark(javaCode, cCode, enableWarmup, warmupIterations, optimizationLevel);
+
+            System.out.println("\n--- Java Results ---");
+            printResult("Java", benchmarkResult.getJavaResult());
+
+            System.out.println("\n--- Native (C) Results ---");
+            printResult("Native (C)", benchmarkResult.getCResult());
 
         } catch (IOException | InterruptedException e) {
             System.err.println("Error during execution: " + e.getMessage());

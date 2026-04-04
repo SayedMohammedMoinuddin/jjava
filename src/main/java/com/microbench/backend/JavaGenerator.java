@@ -11,14 +11,25 @@ public class JavaGenerator implements ASTVisitor<String> {
         StringBuilder sb = new StringBuilder();
         sb.append("public class Main {\n");
         sb.append("    public static void main(String[] args) {\n");
-        sb.append("        long __startTime = System.nanoTime();\n\n");
+
+        // Setup warmup
+        sb.append("        int __warmupIters = Integer.parseInt(args[0]);\n");
+        sb.append("        for (int __w = 0; __w <= __warmupIters; __w++) {\n");
+        sb.append("            if (__w == __warmupIters) {\n");
+        sb.append("                System.out.println(\"__WARMUP_DONE\");\n");
+        sb.append("            }\n");
+
+        sb.append("            long __startTime = System.nanoTime();\n\n");
 
         for (Statement stmt : program.getStatements()) {
-            sb.append("        ").append(stmt.accept(this)).append("\n");
+            sb.append("            ").append(stmt.accept(this).replace("\n", "\n            ")).append("\n");
         }
 
-        sb.append("\n        long __endTime = System.nanoTime();\n");
-        sb.append("        System.out.println(\"__METRIC_TIME_NS:\" + (__endTime - __startTime));\n");
+        sb.append("\n            long __endTime = System.nanoTime();\n");
+        sb.append("            if (__w == __warmupIters) {\n");
+        sb.append("                System.out.println(\"BENCH_TIME_NS=\" + (__endTime - __startTime));\n");
+        sb.append("            }\n");
+        sb.append("        }\n");
         sb.append("    }\n");
         sb.append("}\n");
 
@@ -49,6 +60,17 @@ public class JavaGenerator implements ASTVisitor<String> {
         sb.append(forLoop.getUpdateVar()).append(" = ").append(forLoop.getUpdateExpr().accept(this)).append(") {\n");
 
         for (Statement stmt : forLoop.getBody()) {
+            sb.append("            ").append(stmt.accept(this)).append("\n");
+        }
+        sb.append("        }");
+        return sb.toString();
+    }
+
+    @Override
+    public String visit(WhileLoop whileLoop) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("while (").append(whileLoop.getCondition().accept(this)).append(") {\n");
+        for (Statement stmt : whileLoop.getBody()) {
             sb.append("            ").append(stmt.accept(this)).append("\n");
         }
         sb.append("        }");

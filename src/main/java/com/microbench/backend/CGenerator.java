@@ -16,18 +16,28 @@ public class CGenerator implements ASTVisitor<String> {
 
         StringBuilder sb = new StringBuilder();
         sb.append("#include <stdio.h>\n");
+        sb.append("#include <stdlib.h>\n");
         sb.append("#include <time.h>\n\n");
-        sb.append("int main() {\n");
-        sb.append("    struct timespec start, end;\n");
-        sb.append("    clock_gettime(CLOCK_MONOTONIC, &start);\n\n");
+        sb.append("int main(int argc, char** argv) {\n");
+        sb.append("    int warmup_iters = atoi(argv[1]);\n");
+        sb.append("    for (int w = 0; w <= warmup_iters; w++) {\n");
+        sb.append("        if (w == warmup_iters) {\n");
+        sb.append("            printf(\"__WARMUP_DONE\\n\");\n");
+        sb.append("        }\n");
+
+        sb.append("        struct timespec start, end;\n");
+        sb.append("        clock_gettime(CLOCK_MONOTONIC, &start);\n\n");
 
         for (Statement stmt : program.getStatements()) {
-            sb.append("    ").append(stmt.accept(this)).append("\n");
+            sb.append("        ").append(stmt.accept(this).replace("\n", "\n        ")).append("\n");
         }
 
-        sb.append("\n    clock_gettime(CLOCK_MONOTONIC, &end);\n");
-        sb.append("    long long elapsed_ns = (end.tv_sec - start.tv_sec) * 1000000000LL + (end.tv_nsec - start.tv_nsec);\n");
-        sb.append("    printf(\"__METRIC_TIME_NS:%lld\\n\", elapsed_ns);\n");
+        sb.append("\n        clock_gettime(CLOCK_MONOTONIC, &end);\n");
+        sb.append("        if (w == warmup_iters) {\n");
+        sb.append("            long long elapsed_ns = (end.tv_sec - start.tv_sec) * 1000000000LL + (end.tv_nsec - start.tv_nsec);\n");
+        sb.append("            printf(\"BENCH_TIME_NS=%lld\\n\", elapsed_ns);\n");
+        sb.append("        }\n");
+        sb.append("    }\n");
         sb.append("    return 0;\n");
         sb.append("}\n");
 
@@ -75,6 +85,17 @@ public class CGenerator implements ASTVisitor<String> {
         sb.append(forLoop.getUpdateVar()).append(" = ").append(forLoop.getUpdateExpr().accept(this)).append(") {\n");
 
         for (Statement stmt : forLoop.getBody()) {
+            sb.append("        ").append(stmt.accept(this)).append("\n");
+        }
+        sb.append("    }");
+        return sb.toString();
+    }
+
+    @Override
+    public String visit(WhileLoop whileLoop) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("while (").append(whileLoop.getCondition().accept(this)).append(") {\n");
+        for (Statement stmt : whileLoop.getBody()) {
             sb.append("        ").append(stmt.accept(this)).append("\n");
         }
         sb.append("    }");
