@@ -1,6 +1,10 @@
 package com.microbench.persistence;
 
-public class BenchmarkRunEntity {
+import java.io.Serializable;
+
+public class BenchmarkRunEntity implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private final long id;
     private final long programId;
     private final long jvmTimeNs;

@@ -1,6 +1,10 @@
 package com.microbench.engine;
 
-public class ExecutionResult {
+import java.io.Serializable;
+
+public class ExecutionResult implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private final boolean success;
     private final String output;
     private final long executionTimeNs;

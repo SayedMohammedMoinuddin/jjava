@@ -16,14 +16,20 @@ This is a Java desktop application that parses a small, custom math-heavy langua
    mvn clean compile
    ```
 
-2. **Run the CLI**
+2. **Start the RMI Server (Required)**
    ```bash
-   mvn exec:java -Dexec.mainClass=com.microbench.Main -Dexec.args="examples/test.micro"
+   mvn exec:java -Dexec.mainClass=com.microbench.rmi.CompilerServer
    ```
+   *You should see a message like "RMI Compiler Server ready on port 1099". Keep this running in the background.*
 
-3. **Run the GUI**
+3. **Run the JavaFX Client (GUI)**
    ```bash
    mvn exec:java -Dexec.mainClass=com.microbench.ui.GuiMain
+   ```
+
+4. **Run the CLI Client (Alternative)**
+   ```bash
+   mvn exec:java -Dexec.mainClass=com.microbench.Main -Dexec.args="examples/test.micro"
    ```
 
 ## Features

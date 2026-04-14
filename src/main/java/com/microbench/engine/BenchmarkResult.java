@@ -1,6 +1,10 @@
 package com.microbench.engine;
 
-public class BenchmarkResult {
+import java.io.Serializable;
+
+public class BenchmarkResult implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private final ExecutionResult javaResult;
     private final ExecutionResult cResult;
 

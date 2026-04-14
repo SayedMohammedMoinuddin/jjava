@@ -1,21 +1,13 @@
 package com.microbench;
 
-import com.microbench.ast.ASTNode;
-import com.microbench.ast.Program;
-import com.microbench.backend.CGenerator;
-import com.microbench.backend.JavaGenerator;
-import com.microbench.engine.ExecutionEngine;
 import com.microbench.engine.ExecutionResult;
 import com.microbench.engine.BenchmarkResult;
-import com.microbench.frontend.ASTBuilder;
-import com.microbench.frontend.parser.MicroLexer;
-import com.microbench.frontend.parser.MicroParser;
-import org.antlr.v4.runtime.CharStream;
-import org.antlr.v4.runtime.CharStreams;
-import org.antlr.v4.runtime.CommonTokenStream;
+import com.microbench.rmi.RemoteCompilerClient;
+import com.microbench.rmi.RemoteCompilerService;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 
 public class Main {
 
@@ -32,45 +24,20 @@ public class Main {
         }
 
         try {
-            System.out.println("Processing file: " + filePath);
+            System.out.println("Connecting to Remote Compiler Server at localhost:1099...");
+            RemoteCompilerClient client = new RemoteCompilerClient("localhost", 1099);
+            RemoteCompilerService service = client.getService();
 
-            // 1. Parsing and AST Generation
-            CharStream input = CharStreams.fromFileName(filePath);
-            MicroLexer lexer = new MicroLexer(input);
-            CommonTokenStream tokens = new CommonTokenStream(lexer);
-            MicroParser parser = new MicroParser(tokens);
-
-            MicroParser.ProgramContext tree = parser.program();
-            ASTBuilder astBuilder = new ASTBuilder();
-            ASTNode ast = astBuilder.visit(tree);
-
-            if (!(ast instanceof Program)) {
-                System.err.println("Error: Could not generate valid AST.");
-                System.exit(1);
-            }
-
-            Program program = (Program) ast;
-
-            // 2. Code Generation
-            JavaGenerator javaGenerator = new JavaGenerator();
-            String javaCode = javaGenerator.visit(program);
-
-            CGenerator cGenerator = new CGenerator();
-            String cCode = cGenerator.visit(program);
-
-            System.out.println("\n--- Generated Java Code ---\n" + javaCode);
-            System.out.println("--- Generated C Code ---\n" + cCode);
-
-            // 3. Execution and Telemetry
-            ExecutionEngine engine = new ExecutionEngine();
+            System.out.println("Reading file: " + filePath);
+            String sourceCode = Files.readString(file.toPath());
 
             boolean enableWarmup = true;
             int warmupIterations = 1000;
             String optimizationLevel = "-O3";
 
-            System.out.println("--- Running Benchmarks (Warmup: " + enableWarmup + ", Iters: " + warmupIterations + ", Opt: " + optimizationLevel + ") ---");
+            System.out.println("--- Running Remote Benchmark (Warmup: " + enableWarmup + ", Iters: " + warmupIterations + ", Opt: " + optimizationLevel + ") ---");
 
-            BenchmarkResult benchmarkResult = engine.runBenchmark(javaCode, cCode, enableWarmup, warmupIterations, optimizationLevel);
+            BenchmarkResult benchmarkResult = service.compileAndRun(sourceCode, file.getName(), optimizationLevel, enableWarmup, warmupIterations);
 
             System.out.println("\n--- Java Results ---");
             printResult("Java", benchmarkResult.getJavaResult());
@@ -78,7 +45,7 @@ public class Main {
             System.out.println("\n--- Native (C) Results ---");
             printResult("Native (C)", benchmarkResult.getCResult());
 
-        } catch (IOException | InterruptedException e) {
+        } catch (Exception e) {
             System.err.println("Error during execution: " + e.getMessage());
             e.printStackTrace();
         }

@@ -1,6 +1,10 @@
 package com.microbench.persistence;
 
-public class ProgramEntity {
+import java.io.Serializable;
+
+public class ProgramEntity implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private final long id;
     private final String name;
     private final String source;
