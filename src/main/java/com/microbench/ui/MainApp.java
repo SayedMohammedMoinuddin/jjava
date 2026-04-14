@@ -1,18 +1,12 @@
 package com.microbench.ui;
 
-import com.microbench.ast.ASTNode;
-import com.microbench.ast.Program;
-import com.microbench.backend.CGenerator;
-import com.microbench.backend.JavaGenerator;
 import com.microbench.engine.BenchmarkResult;
-import com.microbench.engine.ExecutionEngine;
 import com.microbench.engine.ExecutionResult;
-import com.microbench.frontend.ASTBuilder;
-import com.microbench.frontend.parser.MicroLexer;
-import com.microbench.frontend.parser.MicroParser;
-import com.microbench.persistence.*;
+import com.microbench.persistence.BenchmarkRunEntity;
+import com.microbench.rmi.RemoteCompilerService;
+import com.microbench.rmi.RmiClientFactory;
 import javafx.application.Application;
-import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -27,16 +21,8 @@ import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class MainApp extends Application {
-
-    private DatabaseManager dbManager;
-    private ProgramDao programDao;
-    private BenchmarkRunDao benchmarkRunDao;
-    private ExecutionEngine engine;
-    private ExecutorService executorService;
 
     // UI Components
     private TextField programNameField;
@@ -53,19 +39,10 @@ public class MainApp extends Application {
 
     @Override
     public void init() throws Exception {
-        dbManager = new DatabaseManager();
-        dbManager.initializeSchema();
-        programDao = new ProgramDao(dbManager);
-        benchmarkRunDao = new BenchmarkRunDao(dbManager);
-        engine = new ExecutionEngine();
-        executorService = Executors.newSingleThreadExecutor();
     }
 
     @Override
     public void stop() throws Exception {
-        if (executorService != null) {
-            executorService.shutdown();
-        }
     }
 
     @Override
@@ -177,44 +154,40 @@ print(sum);
 
         int finalWarmupIters = warmupIters;
 
-        executorService.submit(() -> {
-            try {
-                log("Compiling AST...");
-                MicroLexer lexer = new MicroLexer(CharStreams.fromString(source));
-                MicroParser parser = new MicroParser(new CommonTokenStream(lexer));
-                ASTBuilder astBuilder = new ASTBuilder();
-                ASTNode ast = astBuilder.visit(parser.program());
+        consoleArea.setText("Connecting to remote compiler...\n");
 
-                if (!(ast instanceof Program)) {
-                    logError("Failed to parse into a valid Program.");
-                    return;
-                }
-                Program program = (Program) ast;
-
-                log("Generating target code...");
-                JavaGenerator javaGen = new JavaGenerator();
-                String javaCode = javaGen.visit(program);
-
-                CGenerator cGen = new CGenerator();
-                String cCode = cGen.visit(program);
-
-                log("Running Engine...");
-                BenchmarkResult result = engine.runBenchmark(javaCode, cCode, warmup, finalWarmupIters, optLevel);
-
-                Platform.runLater(() -> {
-                    updateUIWithResult(result, programName, source, optLevel, warmup, finalWarmupIters);
-                });
-
-            } catch (Exception e) {
-                logError("Exception: " + e.getMessage());
-                e.printStackTrace();
-            } finally {
-                Platform.runLater(() -> runButton.setDisable(false));
+        Task<BenchmarkResult> compileTask = new Task<BenchmarkResult>() {
+            @Override
+            protected BenchmarkResult call() throws Exception {
+                updateMessage("Connecting to remote compiler...");
+                RemoteCompilerService service = RmiClientFactory.getService();
+                updateMessage("Compiling remotely...");
+                return service.compileAndRun(source, programName, optLevel, warmup, finalWarmupIters);
             }
+        };
+
+        compileTask.messageProperty().addListener((obs, oldMessage, newMessage) -> {
+            log(newMessage);
         });
+
+        compileTask.setOnSucceeded(e -> {
+            BenchmarkResult result = compileTask.getValue();
+            updateUIWithResult(result);
+            refreshHistory();
+            runButton.setDisable(false);
+        });
+
+        compileTask.setOnFailed(e -> {
+            Throwable ex = compileTask.getException();
+            logError("Connection or execution failed: " + ex.getMessage());
+            ex.printStackTrace();
+            runButton.setDisable(false);
+        });
+
+        new Thread(compileTask).start();
     }
 
-    private void updateUIWithResult(BenchmarkResult result, String name, String source, String optLevel, boolean warmup, int warmupIters) {
+    private void updateUIWithResult(BenchmarkResult result) {
         ExecutionResult jvm = result.getJavaResult();
         ExecutionResult nat = result.getCResult();
 
@@ -237,30 +210,38 @@ print(sum);
         memSeries.getData().add(new XYChart.Data<>("JVM", jvm.getPeakMemoryKb()));
         memSeries.getData().add(new XYChart.Data<>("Native", nat.getPeakMemoryKb()));
         memoryChart.getData().add(memSeries);
-
-        // Persist
-        ProgramEntity progEntity = programDao.saveOrGet(name, source, "");
-        if (progEntity != null) {
-            benchmarkRunDao.save(progEntity.getId(), jvm.getExecutionTimeNs(), nat.getExecutionTimeNs(),
-                    jvm.getPeakMemoryKb(), nat.getPeakMemoryKb(), jvm.getExitCode(), nat.getExitCode(),
-                    optLevel, warmup, warmupIters);
-            refreshHistory();
-        }
     }
 
     private void refreshHistory() {
-        recentRuns = benchmarkRunDao.listRecent(20);
-        historyList.getItems().clear();
-        for (BenchmarkRunEntity run : recentRuns) {
-            historyList.getItems().add(run.getRunAt() + " [ProgID: " + run.getProgramId() + "]");
-        }
+        Task<List<BenchmarkRunEntity>> historyTask = new Task<List<BenchmarkRunEntity>>() {
+            @Override
+            protected List<BenchmarkRunEntity> call() throws Exception {
+                RemoteCompilerService service = RmiClientFactory.getService();
+                return service.getRecentRuns();
+            }
+        };
+
+        historyTask.setOnSucceeded(e -> {
+            recentRuns = historyTask.getValue();
+            historyList.getItems().clear();
+            for (BenchmarkRunEntity run : recentRuns) {
+                historyList.getItems().add(run.getRunAt() + " [ProgID: " + run.getProgramId() + "]");
+            }
+        });
+
+        historyTask.setOnFailed(e -> {
+            Throwable ex = historyTask.getException();
+            System.err.println("Failed to fetch history: " + ex.getMessage());
+        });
+
+        new Thread(historyTask).start();
     }
 
     private void log(String msg) {
-        Platform.runLater(() -> consoleArea.appendText(msg + "\n"));
+        consoleArea.appendText(msg + "\n");
     }
 
     private void logError(String msg) {
-        Platform.runLater(() -> consoleArea.appendText("ERROR: " + msg + "\n"));
+        consoleArea.appendText("ERROR: " + msg + "\n");
     }
 }

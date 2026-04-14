@@ -1,6 +1,7 @@
 package com.microbench.engine;
+import java.io.Serializable;
 
-public class BenchmarkResult {
+public class BenchmarkResult implements Serializable {
     private final ExecutionResult javaResult;
     private final ExecutionResult cResult;
 
