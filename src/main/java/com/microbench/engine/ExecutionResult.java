@@ -1,6 +1,7 @@
 package com.microbench.engine;
+import java.io.Serializable;
 
-public class ExecutionResult {
+public class ExecutionResult implements Serializable {
     private final boolean success;
     private final String output;
     private final long executionTimeNs;

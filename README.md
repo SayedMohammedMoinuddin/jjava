@@ -16,17 +16,20 @@ This is a Java desktop application that parses a small, custom math-heavy langua
    mvn clean compile
    ```
 
-2. **Run the CLI**
+2. **Run the RMI Server (Backend)**
    ```bash
-   mvn exec:java -Dexec.mainClass=com.microbench.Main -Dexec.args="examples/test.micro"
+   mvn exec:java -Dexec.mainClass=com.microbench.server.CompilerServer
    ```
+   The server will start on `localhost:1099` by default. It must be running before you try to compile from the GUI.
 
-3. **Run the GUI**
+3. **Run the GUI Client (Frontend)**
    ```bash
    mvn exec:java -Dexec.mainClass=com.microbench.ui.GuiMain
    ```
+   If the server is offline when a benchmark is submitted, an error message will show up in the application's console output.
 
 ## Features
+- **Distributed Architecture**: Client/Server separation via Java RMI.
 - **Micro-Language**: Supports `int` and `double` declarations, `for` and `while` loops, math operations (`+`, `-`, `*`, `/`, `%`), bitwise operators, and `print()` statements.
 - **Dual Compilation**:
   - Compiles to Java using `javac`.
